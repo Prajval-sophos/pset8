@@ -48,7 +48,7 @@ $(function() {
     // options for map
     // https://developers.google.com/maps/documentation/javascript/reference#MapOptions
     var options = {
-        center: {lat: 42.3770, lng:-71.1256}, // Cambridge,Massachusetts
+        center: {lat: 42.3770, lng: -71.1256}, // Cambridge, Massachusetts
         disableDefaultUI: true,
         mapTypeId: google.maps.MapTypeId.ROADMAP,
         maxZoom: 14,
@@ -74,7 +74,58 @@ $(function() {
  */
 function addMarker(place)
 {
-    // TODO
+    var image = 'http://maps.google.com/mapfiles/kml/pal4/icon0.png';
+    var myLatLng = new google.maps.LatLng(parseFloat(place.latitude),parseFloat(place.longitude));
+
+    // create marker object
+    var marker = new MarkerWithLabel({
+	icon: image,	
+	position: myLatLng,
+	map: map,
+	labelContent: place.place_name + ", " + place.admin_name1,
+	labelAnchor: new google.maps.Point(20, 0),
+	labelClass: "label"
+    });
+
+    google.maps.event.addListener(marker, "click", function() {
+	showInfo(marker);
+	$.getJSON("articles.php", {
+	    geo: place.postal_code
+	})
+	.done(function(data, textStatus, jqXHR) 
+	{
+	    if (data.length === 0)
+	    {
+		showInfo(marker, "Nothing New! ");
+	    }
+	    else
+	    {
+		// start unordered list
+		var list = "<ul>";	
+
+		// create template
+		var template = _.template("<li><a href = '<%- link %>' target = '_blank'><%- title %></a></li>");
+		
+		// use template to insert content
+		for (var i = 0, n = data.length; i < n; i++)
+		{
+		    list += template({
+			link: data[i].link,
+			title: data[i].title
+		    }); 
+		}
+
+		// end unordered list
+		list += "</ul>";	
+		
+		// show news
+		showInfo(marker, list);
+	    }
+	});
+    });
+
+    // add marker to global variable markers
+    markers.push(marker);
 }
 
 /**
@@ -108,7 +159,7 @@ function configure()
         source: search,
         templates: {
             empty: "no places found yet",
-            suggestion: _.template("<p><%- place_name %>, <%- admin_name1 %>, <small><%- postal_code %></small></p>")
+            suggestion: _.template("<p><%- place_name %>, <%- admin_name1 %>, <%- postal_code %></p>")
         }
     });
 
@@ -120,7 +171,7 @@ function configure()
         var longitude = (_.isNumber(suggestion.longitude)) ? suggestion.longitude : parseFloat(suggestion.longitude);
 
         // set map's center
-        map.setCenter({lat: latitude, lng: longitude});
+        map.setCenter({lat: parseFloat(suggestion.latitude), lng: parseFloat(suggestion.longitude)});
 
         // update UI
         update();
@@ -159,7 +210,14 @@ function hideInfo()
  */
 function removeMarkers()
 {
-    // TODO
+    // remove marker from markers
+    for (var i = 0, n = markers.length; i < n; i++)
+    {
+	markers[i].setMap(null);
+    }
+
+    // reset length to 0
+    markers.length = 0;
 }
 
 /**
@@ -244,4 +302,4 @@ function update()
          // log error to browser's console
          console.log(errorThrown.toString());
      });
-}
+};
